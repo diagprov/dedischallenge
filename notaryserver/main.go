@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"github.com/dedis/kyber/edwards/ed25519"
 	"github.com/diagprov/dedischallenge/schnorrgs"
+	"golang.org/x/net/context"
 	"net"
+	"os"
+	"os/signal"
 )
 
 func main() {
@@ -19,11 +22,12 @@ func main() {
 	fmt.Printf("notary - listening on port %d.\n", port)
 
 	suite := ed25519.NewAES128SHA256Ed25519(true)
-	kv, err := crypto.SchnorrLoadKeypair(kfilepath, suite)
+	kv, err := schnorrgs.SchnorrLoadKeypair()
 	if err != nil {
 		fmt.Println("Error " + err.Error())
 		return
 	}
+
 
 	// I don't know if there's a way to
 	// do std::bind-like behaviour in GO.
@@ -32,5 +36,21 @@ func main() {
 	var signOneKBImpl connectionhandler = func(conn net.Conn) {
 		signOneKBSchnorr(conn, suite, kv)
 	}
-	serve(port, signOneKBImpl)
+
+    ctx, cancel := context.WithCancel(context.Background())
+
+	serve(port, signOneKBImpl, ctx)
+
+    signalCh := make(chan os.Signal, 1)
+    signal.Notify(signalCh, os.Interrupt)
+
+    go func() { 
+        select {
+        case <- signalCh:
+            cancel()
+            return
+        }
+    }()
+    <-
+
 }

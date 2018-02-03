@@ -1,33 +1,30 @@
-
-
 package main
 
 import (
-    "fmt"
-	"github.com/dedis/crypto/abstract"
-	"github.com/dedis/crypto/edwards/ed25519"
-	"vennard.ch/crypto"
+	"fmt"
+	"github.com/dedis/kyber/group/edwards25519"
+	"github.com/diagprov/dedischallenge/schnorrgs"
 )
 
 /* Does excactly what it sounds like - creates and saves a schnorr public/private keypair.
-   Much like ssh-keygen, we append .pub to the public key. Unlike ssh-keygen we append .pri 
+   Much like ssh-keygen, we append .pub to the public key. Unlike ssh-keygen we append .pri
    to the private key also. */
 func runKeyGen(kpath string) {
-	suite := ed25519.NewAES128SHA256Ed25519(true) 
+	suite := ed25519.NewAES128SHA256Ed25519(true)
 	KeyGen(suite, kpath)
 }
 
-/* abstract keygen function. Takes any suite, although later code assumes ED25519 with the 
+/* abstract keygen function. Takes any suite, although later code assumes ED25519 with the
    fill curve group */
 func KeyGen(suite abstract.Suite,
-			kpath string) {
+	kpath string) {
 
 	var kpubpath string = kpath
 	var kpripath string = kpath
 	kpubpath = kpubpath + ".pub"
 	kpripath = kpripath + ".pri"
 
-	keypair, err := crypto.SchnorrGenerateKeypair(suite)
+	keypair, err := crypto.SchnorrGenerateKeypair(su
 	if err != nil {
 		fmt.Println("Key generation failed")
 		return

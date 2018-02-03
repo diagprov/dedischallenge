@@ -65,16 +65,20 @@ type SchnorrPublicKV struct {
 	pP    kyber.Point // Public key represent as an encoded byte string
 }
 
+// This structure is only used for JSON serialization
 type SchnorrSecretDiskRepr struct {
 	Suite string
 	S     string
 	P     string
 }
 
+// Retrieves the public keyset directly from a private keyset.
+// Yes, it's a little Java-ish/class-ish in design.
 func (s SchnorrSecretKV) GetPublicKeyset() SchnorrPublicKV {
 	return SchnorrPublicKV{suite: s.suite, pP: s.pP}
 }
 
+// Exports a secret key for on-disk storage
 func (k SchnorrSecretKV) Export() []byte {
 
 	bins := k.s.Bytes()
@@ -91,6 +95,8 @@ func (k SchnorrSecretKV) Export() []byte {
 	return b
 }
 
+// Creates a SchnorrSecretKV from serialized bytes, for use reading SecretKV's
+// from disk.
 func NewSchnorrSecretKVFromImport(source []byte) (*SchnorrSecretKV, error) {
 
 	var umkv SchnorrSecretDiskRepr
@@ -136,11 +142,16 @@ func NewSchnorrSecretKVFromImport(source []byte) (*SchnorrSecretKV, error) {
 	}, nil
 }
 
+// Exports a SchorrPublicKV to a string that can be written
+// directly to a file. The string is a base64 encoded combination
+// of the suite used and the public key point.
 func (p SchnorrPublicKV) Export() string {
 	// No JSON for this, let's save ourselves the effort
 	return p.suite + ";" + p.pP.String()
 }
 
+// Reads a SchnorrPublicKV encoded as a string by its export method
+// or otherwise, and produces a SchnorrPublicKV value.
 func NewSchnorrPublicKeyFromString(source string) (*SchnorrPublicKV, error) {
 	splitsource := strings.Split(source, ";")
 	suiteid := splitsource[0]
