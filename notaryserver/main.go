@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/dedis/kyber/edwards/ed25519"
+	"github.com/dedis/kyber/group/edwards25519"
 	"github.com/diagprov/dedischallenge/schnorrgs"
 	"golang.org/x/net/context"
 	"net"
@@ -21,13 +21,12 @@ func main() {
 	flag.Parse()
 	fmt.Printf("notary - listening on port %d.\n", port)
 
-	suite := ed25519.NewAES128SHA256Ed25519(true)
-	kv, err := schnorrgs.SchnorrLoadKeypair()
+	suite := edwards25519.NewBlakeSHA256Ed25519()
+	kv, err := schnorrgs.SchnorrLoadSecretKV(kfilepath)
 	if err != nil {
 		fmt.Println("Error " + err.Error())
 		return
 	}
-
 
 	// I don't know if there's a way to
 	// do std::bind-like behaviour in GO.
@@ -37,20 +36,22 @@ func main() {
 		signOneKBSchnorr(conn, suite, kv)
 	}
 
-    ctx, cancel := context.WithCancel(context.Background())
+	exitCh := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
 
-	serve(port, signOneKBImpl, ctx)
+	serve(port, signOneKBImpl, ctx, exitCh)
 
-    signalCh := make(chan os.Signal, 1)
-    signal.Notify(signalCh, os.Interrupt)
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, os.Interrupt)
 
-    go func() { 
-        select {
-        case <- signalCh:
-            cancel()
-            return
-        }
-    }()
-    <-
+	go func() {
+		select {
+		case <-signalCh:
+			cancel()
+			return
+		}
+	}()
 
+	// delay main thread until worker has returned.
+	<-exitCh
 }

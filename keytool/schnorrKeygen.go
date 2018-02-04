@@ -10,13 +10,13 @@ import (
    Much like ssh-keygen, we append .pub to the public key. Unlike ssh-keygen we append .pri
    to the private key also. */
 func runKeyGen(kpath string) {
-	suite := ed25519.NewAES128SHA256Ed25519(true)
+	suite := edwards25519.NewBlakeSHA256Ed25519()
 	KeyGen(suite, kpath)
 }
 
 /* abstract keygen function. Takes any suite, although later code assumes ED25519 with the
    fill curve group */
-func KeyGen(suite abstract.Suite,
+func KeyGen(suite schnorrgs.CryptoSuite,
 	kpath string) {
 
 	var kpubpath string = kpath
@@ -24,21 +24,21 @@ func KeyGen(suite abstract.Suite,
 	kpubpath = kpubpath + ".pub"
 	kpripath = kpripath + ".pri"
 
-	keypair, err := crypto.SchnorrGenerateKeypair(su
+	keypair, err := schnorrgs.SchnorrGenerateKeypair(suite)
 	if err != nil {
 		fmt.Println("Key generation failed")
 		return
 	}
-	pubkey := crypto.SchnorrExtractPubkey(keypair)
+	pubkey := keypair.GetPublicKeyset()
 
-	r := crypto.SchnorrSaveKeypair(kpripath, suite, keypair)
+	r := schnorrgs.SchnorrSaveSecretKV(kpripath, keypair)
 	if r != nil {
 		fmt.Printf("Unable to write to %s\n", kpripath)
 		fmt.Println("Error is")
 		fmt.Println(r.Error())
 		return
 	}
-	r = crypto.SchnorrSavePubkey(kpubpath, suite, pubkey)
+	r = schnorrgs.SchnorrSavePubkey(kpubpath, pubkey)
 	if r != nil {
 		fmt.Printf("Unable to write to %s\n", kpubpath)
 		return
