@@ -41,7 +41,7 @@ func TestSchnorrSignature(t *testing.T) {
 			t.Error("Signature Generation failed")
 		}
 
-		v1, e1 := SchnorrVerify(suite, pk, message, sig)
+		v1, e1 := SchnorrVerifyBinary(suite, pk, message, sig)
 		if e1 != nil {
 			t.Error("Error during Verification")
 		}
@@ -49,7 +49,7 @@ func TestSchnorrSignature(t *testing.T) {
 			t.Error("Verification of signature failed")
 		}
 
-		v2, e2 := SchnorrVerify(suite, pk, wrongmessage, sig)
+		v2, e2 := SchnorrVerifyBinary(suite, pk, wrongmessage, sig)
 		if e2 != nil {
 			t.Error("Error during Verification")
 		}

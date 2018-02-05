@@ -90,12 +90,7 @@ func SchnorrSign(suite CryptoSuite,
 // the message
 func SchnorrVerify(suite CryptoSuite,
 	kp SchnorrPublicKV,
-	msg []byte, sig []byte) (bool, error) {
-
-	signature, err := DecodeSchnorrSignature(suite, sig)
-	if err != nil {
-		return false, err
-	}
+	msg []byte, signature SchnorrSignature) (bool, error) {
 
 	var sG, eY, R kyber.Point
 	sG = suite.Point().Mul(signature.S, nil)   // sG
@@ -108,6 +103,18 @@ func SchnorrVerify(suite CryptoSuite,
 	}
 
 	return ev.Equal(signature.E), nil
+}
+
+func SchnorrVerifyBinary(suite CryptoSuite,
+	kp SchnorrPublicKV,
+	msg []byte, sig []byte) (bool, error) {
+
+	signature, err := DecodeSchnorrSignature(suite, sig)
+	if err != nil {
+		return false, err
+	}
+
+	return SchnorrVerify(suite, kp, msg, signature)
 }
 
 // The schnorrGenerateKeypair does exactly that -
