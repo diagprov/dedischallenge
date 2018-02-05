@@ -3,7 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/dedis/crypto/abstract"
+	"github.com/dedis/kyber"
+	"github.com/diagprov/dedischallenge/schnorrgs"
 	"golang.org/x/net/context"
 	"io"
 	"net"
@@ -19,13 +20,13 @@ type connectionhandler func(conn net.Conn)
    This is not the best accept() handler ever written,  but it's better than the client side code */
 func signBlindlySchnorr(conn net.Conn,
 	suite abstract.Suite,
-	kv crypto.SchnorrKeyset,
+	kv schnorrgs.SchnorrKeyset,
 	sharedinfo []byte) {
 	defer conn.Close()
 
 	fmt.Println("SERVER", "Sending initial parameters")
 
-	signerParams, err := crypto.NewPrivateParams(suite, sharedinfo)
+	signerParams, err := schnorrgs.NewPrivateParams(suite, sharedinfo)
 	if err != nil {
 		fmt.Println("SERVER", "Error creating new private parameters", err.Error())
 		return
@@ -65,7 +66,7 @@ func signBlindlySchnorr(conn net.Conn,
 		case data := <-ch:
 			fmt.Println("SERVER", "Received Message")
 
-			var challenge crypto.WISchnorrChallengeMessage
+			var challenge schnorrgs.WISchnorrChallengeMessage
 			buffer := bytes.NewBuffer(data)
 			err = abstract.Read(buffer, &challenge, suite)
 			if err != nil {
@@ -73,7 +74,7 @@ func signBlindlySchnorr(conn net.Conn,
 				return
 			}
 
-			response := crypto.ServerGenerateResponse(suite, challenge, signerParams, kv)
+			response := schnorrgs.ServerGenerateResponse(suite, challenge, signerParams, kv)
 			respbuffer := bytes.Buffer{}
 			abstract.Write(&respbuffer, &response, suite)
 			conn.Write(respbuffer.Bytes())

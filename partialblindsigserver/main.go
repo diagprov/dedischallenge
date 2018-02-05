@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/dedis/kyber/edwards/ed25519"
+	"github.com/dedis/kyber/group/edwards25519"
+	"github.com/diagprov/dedischallenge/schnorrgs"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 	"io/ioutil"
 	"net"
 	"os"
-	"vennard.ch/crypto"
 )
 
 /* These variables form the command line parameters of the keytool utility.
@@ -41,8 +41,8 @@ func main() {
 
 	fmt.Printf("Sigserv3 - listening on port %d.\n", port)
 
-	suite := ed25519.NewAES128SHA256Ed25519(true)
-	kv, err := crypto.SchnorrLoadKeypair(kfilepath, suite)
+	suite := edwards25519.NewBlakeSHA256Ed25519()
+	kv, err := schnorrgs.SchnorrLoadKeypair(kfilepath, suite)
 	if err != nil {
 		fmt.Println("Error " + err.Error())
 		return
