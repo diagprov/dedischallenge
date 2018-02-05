@@ -12,7 +12,6 @@ package schnorrgs
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/dedis/kyber"
 )
 
@@ -78,7 +77,7 @@ func SchnorrSign(suite CryptoSuite,
 	if err != nil {
 		return nil, err
 	}
-	s := suite.Scalar()
+	s := suite.Scalar().Zero()
 	s.Mul(kv.s, e).Sub(k, s) // k - xe
 
 	sig := SchnorrSignature{S: s, E: e}
@@ -107,8 +106,6 @@ func SchnorrVerify(suite CryptoSuite,
 	if err != nil {
 		return false, err
 	}
-	fmt.Println("EV=" + ev.String())
-	fmt.Println("EO=" + signature.E.String())
 
 	return ev.Equal(signature.E), nil
 }

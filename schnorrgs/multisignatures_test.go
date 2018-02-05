@@ -37,7 +37,6 @@ func TestMultisignature2ServerScenario(t *testing.T) {
 	// client side
 	// compute the shared public key given the public keys of each
 	// participant.
-
 	pks := []SchnorrPublicKV{kv_1.GetPublicKeyset(), kv_2.GetPublicKeyset()}
 	sharedpubkey := SchnorrMComputeSharedPublicKey(suite, pks, []SchnorrSecretKV{kv_1, kv_2})
 
@@ -64,10 +63,24 @@ func TestMultisignature2ServerScenario(t *testing.T) {
 	}
 
 	// servers respond to client with responses
-	response_1 := SchnorrMUnmarshallCCComputeResponse(suite, kv_1, commit1,
-		collective_challenge)
-	response_2 := SchnorrMUnmarshallCCComputeResponse(suite, kv_2, commit2,
-		collective_challenge)
+	response_1 := SchnorrMUnmarshallCCComputeResponse(suite, kv_1, commit1, collective_challenge)
+	response_2 := SchnorrMUnmarshallCCComputeResponse(suite, kv_2, commit2, collective_challenge)
+
+	ss1 := SchnorrSignature{S: collective_challenge, E: response_1.R}
+	ss2 := SchnorrSignature{S: collective_challenge, E: response_2.R}
+
+	bs1, _ := ss1.Encode()
+	bs2, _ := ss2.Encode()
+
+	vf1, _ := SchnorrVerify(suite, kv_1.GetPublicKeyset(), randomdata, bs1)
+	vf2, _ := SchnorrVerify(suite, kv_2.GetPublicKeyset(), randomdata, bs2)
+
+	if vf1 == false {
+		t.Error("First Signature check fails, homomorph properties aren't working.")
+	}
+	if vf2 == false {
+		t.Error("Second Signature check fails, homomorph properties aren't working.")
+	}
 
 	// finally, we compute a signature given the responses.
 	responsearr := []SchnorrMResponse{response_1, response_2}
