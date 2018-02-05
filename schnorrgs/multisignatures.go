@@ -5,10 +5,8 @@ package schnorrgs
 */
 
 import (
-	"crypto/rand"
 	"fmt"
 	"github.com/dedis/kyber"
-	"golang.org/x/crypto/blake2b"
 )
 
 // This is our internal tracking structure
@@ -46,11 +44,11 @@ type SchnorrMPublicCommitment struct {
 }
 
 func (s *SchnorrMPrivateCommitment) PublicCommitment() SchnorrMPublicCommitment {
-	return SchnorrMPublicCommitment{s.suite, s.T}
+	return SchnorrMPublicCommitment{suite: s.suite, T: s.T}
 }
 
 func (s *SchnorrMultiSignaturePublicKey) GetSchnorrPK() SchnorrPublicKV {
-	return SchnorrPublicKV{s.suite, s.P}
+	return SchnorrPublicKV{suite: s.suite, pP: s.P}
 }
 
 type SchnorrMAggregateCommmitment struct {
@@ -63,18 +61,12 @@ type SchnorrMResponse struct {
 	R     kyber.Scalar
 }
 
-func SchnorrMGenerateCommitment(suite CryptoSuite) (SchnorrMPrivateCommitment, error) {
-	rsource := make([]byte, 16)
-	_, err := rand.Read(rsource)
-	if err != nil {
-		return SchnorrMPrivateCommitment{}, err
-	}
-	// I have no idea if I just encrypted randomness or not
-	// I'm hoping this just reads the state out.
-
+// Does exactly what it says on the tin: generates a random v and computes
+// vG from the generator point G. Returns a private commitment structure.
+func SchnorrMGenerateCommitment(suite CryptoSuite) SchnorrMPrivateCommitment {
 	v := suite.Scalar().Pick(suite.RandomStream()) // some v
 	t := suite.Point().Mul(v, nil)                 // g^v = t
-	return SchnorrMPrivateCommitment{T: t, V: v}, nil
+	return SchnorrMPrivateCommitment{T: t, V: v}
 }
 
 // (Either side) This function computes the shared public key
@@ -82,13 +74,26 @@ func SchnorrMGenerateCommitment(suite CryptoSuite) (SchnorrMPrivateCommitment, e
 // Since each public key is already g*k where g is the group
 // generator this is all we need to do
 func SchnorrMComputeSharedPublicKey(suite CryptoSuite,
-	pkeys []SchnorrPublicKV) SchnorrMultiSignaturePublicKey {
+	pkeys []SchnorrPublicKV, prikeys []SchnorrSecretKV) SchnorrMultiSignaturePublicKey {
 	var P kyber.Point = pkeys[0].pP
 
+	fmt.Println("P= " + P.String())
 	for _, pkey := range pkeys[1:] {
+		fmt.Println("Adding " + pkey.pP.String())
 		P.Add(P, pkey.pP)
+		fmt.Println("P= " + P.String())
 	}
-	return SchnorrMultiSignaturePublicKey{pkeys[0].suite, P}
+
+	// Additional but unnecessary verification from debugging.
+	var x kyber.Scalar = prikeys[0].s
+	for _, pxk := range prikeys[1:] {
+		x.Add(x, pxk.s)
+	}
+	var PX = suite.Point().Mul(x, nil)
+	if !PX.Equal(P) {
+		fmt.Println("Points are not equal!!")
+	}
+	return SchnorrMultiSignaturePublicKey{suite: pkeys[0].suite, P: P}
 }
 
 // (Client side) The client requiring the n-signature scheme
@@ -98,32 +103,24 @@ func SchnorrMComputeSharedPublicKey(suite CryptoSuite,
 func SchnorrMComputeAggregateCommitment(suite CryptoSuite,
 	pcommits []SchnorrMPublicCommitment) SchnorrMAggregateCommmitment {
 	var P kyber.Point = pcommits[0].T
-
+	fmt.Println("P= " + P.String())
 	for _, pcommit := range pcommits[1:] {
+		fmt.Println("Adding " + pcommit.T.String())
 		P.Add(P, pcommit.T)
+		fmt.Println("P= " + P.String())
 	}
-	k := SchnorrMAggregateCommmitment{pcommits[0].suite, P}
+	k := SchnorrMAggregateCommmitment{suite: pcommits[0].suite, P: P}
 	return k
-
-	/*buf := bytes.Buffer{}
-	  abstract.Write(&buf, &k, suite)
-	  return buf.Bytes()*/
 }
 
 // (Either side) This function takes the aggregate public commitment
 // r and returns sha3(m||r) for a given message.
 func SchnorrMComputeCollectiveChallenge(suite CryptoSuite,
 	msg []byte,
-	pubCommit SchnorrMAggregateCommmitment) ([]byte, error) {
+	pubCommit SchnorrMAggregateCommmitment) (kyber.Scalar, error) {
 
-	h, err := blake2b.New512(nil)
-	if err != nil {
-		return nil, err
-	}
-	pubCommit.P.MarshalTo(h)
-	h.Write(msg)
-	digest := h.Sum(nil)
-	return digest, nil
+	scalar, err := SchnorrHashPointsMsgToScalar(suite, pubCommit.P, msg)
+	return scalar, err
 }
 
 // (Server side) This function reads the collective challenge
@@ -132,26 +129,28 @@ func SchnorrMComputeCollectiveChallenge(suite CryptoSuite,
 func SchnorrMUnmarshallCCComputeResponse(suite CryptoSuite,
 	kv SchnorrSecretKV,
 	privatecommit SchnorrMPrivateCommitment,
-	cc []byte) SchnorrMResponse {
+	c kyber.Scalar) SchnorrMResponse {
 
-	c := suite.Scalar().Pick(suite.RandomStream())
-	r := suite.Scalar()
-	r.Mul(c, kv.s).Sub(privatecommit.V, r)
+	s := suite.Scalar()
+	s.Mul(kv.s, c).Sub(privatecommit.V, s)
 
-	return SchnorrMResponse{privatecommit.suite, r}
+	return SchnorrMResponse{privatecommit.suite, s}
 }
 
 // this function produces a signature given a response from the server.
 func SchnorrMComputeSignatureFromResponses(suite CryptoSuite,
-	cc []byte,
+	c kyber.Scalar,
 	responses []SchnorrMResponse) SchnorrSignature {
-	c := suite.Scalar().Pick(suite.RandomStream()) // H(m||r)
 
-	var r kyber.Scalar = responses[0].R
+	var e kyber.Scalar = responses[0].R
+	fmt.Println("e= " + e.String())
 
 	for _, response := range responses[1:] {
-		r.Add(r, response.R)
+		fmt.Println("Adding " + response.R.String())
+		e.Add(e, response.R)
+		fmt.Println("e= " + e.String())
 	}
 
-	return SchnorrSignature{S: r, E: c}
+	return SchnorrSignature{S: c, E: e}
+
 }

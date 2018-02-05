@@ -26,7 +26,6 @@ func SchnorrHashPointsMsgToScalar(k CryptoSuite, R kyber.Point,
 	if err != nil {
 		return nil, err
 	}
-
 	_, err = R.MarshalTo(h)
 	if err != nil {
 		return nil, err

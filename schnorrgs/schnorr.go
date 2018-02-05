@@ -12,6 +12,7 @@ package schnorrgs
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/dedis/kyber"
 )
 
@@ -99,13 +100,15 @@ func SchnorrVerify(suite CryptoSuite,
 
 	var sG, eY, R kyber.Point
 	sG = suite.Point().Mul(signature.S, nil)   // sG
-	eY = suite.Point().Mul(signature.E, kp.pP) // yE
-	R = suite.Point().Add(sG, eY)              // g^x+y^e
+	eY = suite.Point().Mul(signature.E, kp.pP) // eY
+	R = suite.Point().Add(sG, eY)              // sG +eY
 
 	ev, err := SchnorrHashPointsMsgToScalar(suite, R, msg)
 	if err != nil {
 		return false, err
 	}
+	fmt.Println("EV=" + ev.String())
+	fmt.Println("EO=" + signature.E.String())
 
 	return ev.Equal(signature.E), nil
 }

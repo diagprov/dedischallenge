@@ -30,7 +30,7 @@ func TestMultisignature2ServerScenario(t *testing.T) {
 	randomdata := make([]byte, 1024)
 	_, err = rand.Read(randomdata)
 	if err != nil {
-		fmt.Println(err.Error())
+		t.Error(err.Error())
 		return
 	}
 
@@ -38,27 +38,18 @@ func TestMultisignature2ServerScenario(t *testing.T) {
 	// compute the shared public key given the public keys of each
 	// participant.
 
-	pks := []SchnorrPublicKV{kv_1.GetPublicKeyset(),
-		kv_2.GetPublicKeyset()}
-	sharedpubkey := SchnorrMComputeSharedPublicKey(suite, pks)
+	pks := []SchnorrPublicKV{kv_1.GetPublicKeyset(), kv_2.GetPublicKeyset()}
+	sharedpubkey := SchnorrMComputeSharedPublicKey(suite, pks, []SchnorrSecretKV{kv_1, kv_2})
 
 	// SERVER
 	// In response to this each server will generate two
 	// arbitrary secrets and respond with a commitment.
-	commit1, err := SchnorrMGenerateCommitment(suite)
-	if err != nil {
-		t.Error(err.Error())
-	}
-
-	commit2, err := SchnorrMGenerateCommitment(suite)
-	if err != nil {
-		t.Error(err.Error())
-	}
+	// which it then sends to the client.
+	commit1 := SchnorrMGenerateCommitment(suite)
+	commit2 := SchnorrMGenerateCommitment(suite)
 
 	// Client side
-	commit_array := []SchnorrMPublicCommitment{
-		SchnorrMPublicCommitment{commit1.suite, commit1.PublicCommitment().T},
-		SchnorrMPublicCommitment{commit2.suite, commit2.PublicCommitment().T}}
+	commit_array := []SchnorrMPublicCommitment{commit1.PublicCommitment(), commit2.PublicCommitment()}
 	aggregate_commitment := SchnorrMComputeAggregateCommitment(suite,
 		commit_array)
 
@@ -149,32 +140,16 @@ func TestMultisignature5ServerScenario(t *testing.T) {
 		kv_3.GetPublicKeyset(),
 		kv_4.GetPublicKeyset(),
 		kv_5.GetPublicKeyset()}
-	sharedpubkey := SchnorrMComputeSharedPublicKey(suite, pks)
+	sharedpubkey := SchnorrMComputeSharedPublicKey(suite, pks, []SchnorrSecretKV{kv_1, kv_2, kv_3, kv_4, kv_5})
 
 	// SERVER
 	// In response to this each server will generate two
 	// arbitrary secrets and respond with a commitment.
-	commit1, err := SchnorrMGenerateCommitment(suite)
-	if err != nil {
-		t.Error(err.Error())
-	}
-
-	commit2, err := SchnorrMGenerateCommitment(suite)
-	if err != nil {
-		t.Error(err.Error())
-	}
-	commit3, err := SchnorrMGenerateCommitment(suite)
-	if err != nil {
-		t.Error(err.Error())
-	}
-	commit4, err := SchnorrMGenerateCommitment(suite)
-	if err != nil {
-		t.Error(err.Error())
-	}
-	commit5, err := SchnorrMGenerateCommitment(suite)
-	if err != nil {
-		t.Error(err.Error())
-	}
+	commit1 := SchnorrMGenerateCommitment(suite)
+	commit2 := SchnorrMGenerateCommitment(suite)
+	commit3 := SchnorrMGenerateCommitment(suite)
+	commit4 := SchnorrMGenerateCommitment(suite)
+	commit5 := SchnorrMGenerateCommitment(suite)
 
 	// Client side
 	commit_array := []SchnorrMPublicCommitment{
