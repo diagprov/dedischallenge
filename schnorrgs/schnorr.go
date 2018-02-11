@@ -67,7 +67,7 @@ func DecodeSchnorrSignature(suite CryptoSuite, sig []byte) (SchnorrSignature,
 // returns the error in the second retval.
 func SchnorrSign(suite CryptoSuite,
 	kv SchnorrSecretKV,
-	msg []byte) ([]byte, error) {
+	msg []byte) (SchnorrSignature, error) {
 
 	k := suite.Scalar().Pick(suite.RandomStream()) // some k
 	R := suite.Point().Mul(k, nil)                 // r = g^k
@@ -75,13 +75,24 @@ func SchnorrSign(suite CryptoSuite,
 	// e = H(r||M)
 	e, err := SchnorrHashPointsMsgToScalar(suite, R, msg)
 	if err != nil {
-		return nil, err
+		return SchnorrSignature{}, err
 	}
 	s := suite.Scalar().Zero()
 	s.Mul(kv.s, e).Sub(k, s) // k - xe
 
 	sig := SchnorrSignature{S: s, E: e}
 
+	return sig, nil
+}
+
+func SchnorrSignBinary(suite CryptoSuite,
+	kv SchnorrSecretKV,
+	msg []byte) ([]byte, error) {
+
+	sig, err := SchnorrSign(suite, kv, msg)
+	if err != nil {
+		return nil, err
+	}
 	sige, err := sig.Encode()
 	return sige, err
 }
@@ -132,5 +143,5 @@ func SchnorrGenerateKeypair(suite CryptoSuite) (SchnorrSecretKV, error) {
 	x := suite.Scalar().Pick(suite.RandomStream()) // some x
 	y := suite.Point().Mul(x, nil)                 // y = g^x \in G, DLP.
 
-	return SchnorrSecretKV{s: x, pP: y}, nil
+	return SchnorrSecretKV{suite: "BlakeSHA256Ed25519", s: x, pP: y}, nil
 }

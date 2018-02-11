@@ -1,7 +1,6 @@
 package schnorrgs
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 )
@@ -41,8 +40,7 @@ func SchnorrLoadPubkey(path string) (*SchnorrPublicKV,
 	if err != nil {
 		return nil, err
 	}
-	n := bytes.IndexByte(fcontents, 0)
-	s := string(fcontents[:n-1])
+	s := string(fcontents)
 	kv, err := NewSchnorrPublicKeyFromString(s)
 
 	return kv, err

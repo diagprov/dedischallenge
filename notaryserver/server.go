@@ -25,7 +25,7 @@ func signOneKBSchnorr(conn net.Conn, suite schnorrgs.CryptoSuite, kv *schnorrgs.
 		conn.Close()
 	}
 
-	signature, err := schnorrgs.SchnorrSign(suite, *kv, buffer)
+	signature, err := schnorrgs.SchnorrSignBinary(suite, *kv, buffer)
 
 	conn.Write(signature)
 	if err != nil {
@@ -47,14 +47,14 @@ func serve(port int, handler connectionhandler, ctx context.Context, exitCh chan
 	portspec := fmt.Sprintf("0.0.0.0:%d", port)
 	addr, err := net.ResolveTCPAddr("tcp", portspec)
 	if err != nil {
-		fmt.Printf("%d", err)
+		fmt.Printf(err.Error())
 		exitCh <- struct{}{}
 		return
 	}
 	sock, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		// error
-		fmt.Printf("%d", err)
+		fmt.Printf(err.Error())
 		exitCh <- struct{}{}
 		return
 	}
@@ -62,18 +62,29 @@ func serve(port int, handler connectionhandler, ctx context.Context, exitCh chan
 	// an alternative would be for accept to dispatch as needed
 	// via a select / goroutines and then
 	// each handler function could check whether it should handle or exit.
-	sock.SetDeadline(time.Now().Add(5 * time.Second))
 	for {
+		sock.SetDeadline(time.Now().Add(5 * time.Second))
+		fmt.Println("Accepting connections")
 		conn, err := sock.Accept()
+		fmt.Println("Accept Done")
 		if err != nil {
-			fmt.Printf("%d", err)
+			if e, ok := err.(net.Error); ok && e.Timeout() {
+			} else {
+				fmt.Println(err.Error())
+				fmt.Println(err.Error())
+				exitCh <- struct{}{}
+				return
+			}
 		} else {
+			fmt.Println("Got something to handle, dispatching")
 			go handler(conn)
 			time.Sleep(250 * time.Millisecond)
 		}
 		// check if we need to exit:
+		fmt.Println("Checking exit status")
+		checkctx, _ := context.WithDeadline(ctx, time.Now().Add(100*time.Millisecond))
 		select {
-		case <-ctx.Done():
+		case <-checkctx.Done():
 			exitCh <- struct{}{}
 			return
 		default:

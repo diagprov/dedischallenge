@@ -14,12 +14,20 @@ import (
 type SchnorrMMember struct {
 	HostName string
 	Port     int
-	PKey     schnorrgs.SchnorrPublicKV
+	PKey     string
+}
+
+func (m SchnorrMMember) GetPKeyAsKV() (*schnorrgs.SchnorrPublicKV, error) {
+	return schnorrgs.NewSchnorrPublicKeyFromString(m.PKey)
 }
 
 type SchnorrMGroupConfig struct {
-	JointKey schnorrgs.SchnorrPublicKV
+	JointKey string
 	Members  []SchnorrMMember
+}
+
+func (m SchnorrMGroupConfig) GetJointKeyAsKV() (*schnorrgs.SchnorrPublicKV, error) {
+	return schnorrgs.NewSchnorrPublicKeyFromString(m.JointKey)
 }
 
 const (
@@ -152,7 +160,7 @@ func runClientProtocol(configFilePath string) (bool, error) {
 	}
 
 	var respCount int = 0
-	commitmentArray := make([]schnorrgs.SchnorrMSPublicCommitment, len(config.Members), len(config.Members))
+	commitmentArray := make([]schnorrgs.SchnorrMSPublicCommitment, len(config.Members))
 
 	fmt.Println("CLIENT", "C", "Controller getting ready to receive")
 
@@ -166,7 +174,7 @@ func runClientProtocol(configFilePath string) (bool, error) {
 
 			var commitment schnorrgs.SchnorrMSPublicCommitment
 
-			commitment.UnmarshalBinary(msg.Message)
+			commitment.UnmarshalBinary(suite, msg.Message)
 			if err != nil {
 				fmt.Println("CLIENT", "Read Error")
 				fmt.Println(err.Error())

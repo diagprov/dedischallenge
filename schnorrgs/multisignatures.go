@@ -38,9 +38,21 @@ func (sc SchnorrMSCommitment) MarshalTo(w io.Writer) {
 	sc.T.MarshalTo(w)
 }
 
-func (sc SchnorrMSCommitment) UnmarshalBinary(b []byte) {
-	sc.v.UnmarshalBinary(b[:sc.v.MarshalSize()])
-	sc.T.UnmarshalBinary(b[sc.v.MarshalSize():sc.T.MarshalSize()])
+func (sc SchnorrMSCommitment) UnmarshalBinary(suite CryptoSuite, b []byte) error {
+	v := suite.Scalar()
+	T := suite.Point()
+
+	err := v.UnmarshalBinary(b[:sc.v.MarshalSize()])
+	if err != nil {
+		return err
+	}
+	err = T.UnmarshalBinary(b[sc.v.MarshalSize():sc.T.MarshalSize()])
+	if err != nil {
+		return err
+	}
+	sc.T = T
+	sc.v = v
+	return nil
 }
 
 func (msc SchnorrMSCommitment) GetPublicCommitment() SchnorrMSPublicCommitment {
@@ -67,8 +79,14 @@ func (pc SchnorrMSPublicCommitment) MarshalTo(w io.Writer) {
 	pc.T.MarshalTo(w)
 }
 
-func (pc SchnorrMSPublicCommitment) UnmarshalBinary(b []byte) error {
-	return pc.T.UnmarshalBinary(b)
+func (pc SchnorrMSPublicCommitment) UnmarshalBinary(suite CryptoSuite, b []byte) error {
+	T := suite.Point().Null()
+	err := T.UnmarshalBinary(b)
+	if err != nil {
+		return err
+	}
+	pc.T = T
+	return nil
 }
 
 func SchnorrMSGenerateCommitment(suite CryptoSuite) SchnorrMSCommitment {

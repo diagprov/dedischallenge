@@ -1,12 +1,11 @@
-
 package main
 
 import (
-	"fmt"
-	"os"
 	"encoding/json"
-	"github.com/dedis/crypto/edwards/ed25519"
-	"vennard.ch/crypto"
+	"fmt"
+	"github.com/dedis/kyber/group/edwards25519"
+	"github.com/diagprov/dedischallenge/schnorrgs"
+	"os"
 )
 
 type SchnorrMSHostSpec struct {
@@ -16,48 +15,54 @@ type SchnorrMSHostSpec struct {
 }
 
 type SchnorrMMember struct {
-	HostName    string
-	Port        int
-	PKey        crypto.SchnorrPublicKey
+	HostName string
+	Port     int
+	PKey     string
 }
 
 type SchnorrMGroupConfig struct {
-	JointKey    crypto.SchnorrPublicKey
-	Members     []SchnorrMMember
+	JointKey string
+	Members  []SchnorrMMember
 }
 
-/* Create a group configuration file. This is really a convenience feature 
-   more than anything, making it easier to direct the client than supplying 
+/* Create a group configuration file. This is really a convenience feature
+   more than anything, making it easier to direct the client than supplying
    all the arguments on the command line. */
-func runMultiSignatureGen (group []SchnorrMSHostSpec, outputFile string) error {
+func runMultiSignatureGen(group []SchnorrMSHostSpec, outputFile string) error {
 
 	var config SchnorrMGroupConfig
-	var pkeys []crypto.SchnorrPublicKey
+	var pkeys []schnorrgs.SchnorrPublicKV
+	var pkeys_s []string
 
-	suite := ed25519.NewAES128SHA256Ed25519(true) 
-	for _, mshp :=  range group {
+	suite := edwards25519.NewBlakeSHA256Ed25519()
+	for _, mshp := range group {
 
-		pkey, err := crypto.SchnorrLoadPubkey(mshp.KeyFilePath, suite)
+		fmt.Println("Loading public key " + mshp.KeyFilePath)
+		pkey, err := schnorrgs.SchnorrLoadPubkey(mshp.KeyFilePath)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
 
-		pkeys = append(pkeys, pkey)
+		pkey_s := pkey.Export()
+		pkeys = append(pkeys, *pkey)
+		pkeys_s = append(pkeys_s, pkey_s)
 
-		member := SchnorrMMember{mshp.HostName, mshp.Port, pkey}
+		member := SchnorrMMember{mshp.HostName, mshp.Port, pkey_s}
 		config.Members = append(config.Members, member)
 	}
 
-	jointKey := crypto.SchnorrMComputeSharedPublicKey(suite, pkeys)
-	config.JointKey = jointKey.GetSchnorrPK()
+	jointKey := schnorrgs.SchnorrMSComputeSharedPublicKey(suite, pkeys)
+	jointKey_s := jointKey.Export()
+	config.JointKey = jointKey_s
 
-    data, _ := json.Marshal(config)
+	data, _ := json.Marshal(config)
 
-
-    f, err := os.OpenFile(outputFile, os.O_CREATE | os.O_RDWR, 0644)
-    if err != nil { return err }
-    defer f.Close()
-    _, err = f.Write(data)
+	f, err := os.OpenFile(outputFile, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.Write(data)
 	return err
 }

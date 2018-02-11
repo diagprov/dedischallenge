@@ -4,9 +4,9 @@ import (
 	"crypto/rand"
 	"flag"
 	"fmt"
-	"net"
-	"github.com/dedis/crypto/edwards/ed25519"
+	"github.com/dedis/kyber/group/edwards25519"
 	"github.com/diagprov/dedischallenge/schnorrgs"
+	"net"
 )
 
 func main() {
@@ -19,17 +19,13 @@ func main() {
 	flag.IntVar(&port, "port", 1111, "Use the specified port")
 	flag.Parse()
 
-	suite := ed25519.NewAES128SHA256Ed25519(true)
+	suite := edwards25519.NewBlakeSHA256Ed25519()
 
-	var pk schnorrgs.SchnorrPublicKV
-
-	pk, err := crypto.SchnorrLoadPubkey(kfilepath, suite)
+	pk, err := schnorrgs.SchnorrLoadPubkey(kfilepath)
 	if err != nil {
 		fmt.Println("Error " + err.Error())
 		return
 	}
-
-	fmt.Println("Using public key: " pk.)
 
 	var hostspec string
 	hostspec = fmt.Sprintf("%s:%d", hostname, port)
@@ -55,7 +51,14 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
-	v, err := crypto.SchnorrVerify(suite, pk, randomdata, buffer)
+
+	sig, err := schnorrgs.DecodeSchnorrSignature(suite, buffer)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	v, err := schnorrgs.SchnorrVerify(suite, *pk, randomdata, sig)
 	if err != nil {
 		fmt.Println(err.Error())
 		return

@@ -7,7 +7,6 @@ import (
 	"github.com/dedis/kyber"
 	"github.com/dedis/kyber/group/edwards25519"
 	"golang.org/x/crypto/blake2b"
-	//	"github.com/dedis/kyber/group/nist"
 	"strings"
 )
 

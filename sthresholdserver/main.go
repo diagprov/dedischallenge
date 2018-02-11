@@ -19,7 +19,7 @@ func main() {
 	flag.StringVar(&kfilepath, "keyfile", "", "Use the keyfile specified")
 
 	flag.Parse()
-	fmt.Printf("Sigserv1 - listening on port %d.\n", port)
+	fmt.Printf("sthresholdserver - listening on port %d.\n", port)
 
 	suite := edwards25519.NewBlakeSHA256Ed25519()
 	kv, err := schnorrgs.SchnorrLoadSecretKV(kfilepath)
