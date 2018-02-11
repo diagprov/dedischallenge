@@ -37,6 +37,9 @@ func SchnorrHashPointsMsgToScalar(k CryptoSuite, R kyber.Point,
 	return k.Scalar().SetBytes(h.Sum(nil)), nil
 }
 
+// Returns a cryptographic suite. For now only the string
+// "BlakeSHA256Ed25519" makes any sense. The idea was to allow
+// multiple suites, but, ran out of time.
 func GetSuite(suite string) (CryptoSuite, error) {
 	if suite == "BlakeSHA256Ed25519" {
 		return edwards25519.NewBlakeSHA256Ed25519(), nil

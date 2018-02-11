@@ -85,6 +85,8 @@ func SchnorrSign(suite CryptoSuite,
 	return sig, nil
 }
 
+// Performs a Schnorr Signature and returns a []byte signature.
+// Essentially a helper function.
 func SchnorrSignBinary(suite CryptoSuite,
 	kv SchnorrSecretKV,
 	msg []byte) ([]byte, error) {
@@ -116,6 +118,7 @@ func SchnorrVerify(suite CryptoSuite,
 	return ev.Equal(signature.E), nil
 }
 
+// Helper function to verify signatures from the binary representation
 func SchnorrVerifyBinary(suite CryptoSuite,
 	kp SchnorrPublicKV,
 	msg []byte, sig []byte) (bool, error) {
