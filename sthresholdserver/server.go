@@ -77,10 +77,10 @@ func signOneKBMSchnorr(conn net.Conn, suite schnorrgs.CryptoSuite, kv schnorrgs.
 
 				message = payload
 
-				privateCommitment := schnorrgs.SchnorrMSGenerateCommitment(suite)
+				privateCommitment = schnorrgs.SchnorrMSGenerateCommitment(suite)
 
 				publicCommitment := privateCommitment.GetPublicCommitment()
-
+				fmt.Println("Public commitment " + publicCommitment.T.String())
 				b, err := publicCommitment.MarshalBinary()
 				if err != nil {
 					fmt.Println("Error")
@@ -93,24 +93,23 @@ func signOneKBMSchnorr(conn net.Conn, suite schnorrgs.CryptoSuite, kv schnorrgs.
 			case COMMITMENT:
 
 				fmt.Println("SERVER", "Received Commitment")
-
 				err := aggregateCommitment.UnmarshalBinary(suite, payload)
 				if err != nil {
 					fmt.Println("Error")
-					fmt.Println(err.Error)
+					fmt.Println(err.Error())
 					return
 				}
 				collectiveChallenge, err := schnorrgs.SchnorrMSComputeCollectiveChallenge(suite, aggregateCommitment, message)
 				if err != nil {
 					fmt.Println("Error")
-					fmt.Println(err.Error)
+					fmt.Println(err.Error())
 					return
 				}
 				response := schnorrgs.SchnorrMSComputeResponse(suite, collectiveChallenge, kv, privateCommitment)
 				b, err := response.MarshalBinary()
 				if err != nil {
 					fmt.Println("Error")
-					fmt.Println(err.Error)
+					fmt.Println(err.Error())
 					return
 				}
 				conn.Write(b)

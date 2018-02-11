@@ -79,9 +79,10 @@ func (pc SchnorrMSPublicCommitment) MarshalTo(w io.Writer) {
 	pc.T.MarshalTo(w)
 }
 
-func (pc SchnorrMSPublicCommitment) UnmarshalBinary(suite CryptoSuite, b []byte) error {
-	T := suite.Point().Null()
-	err := T.UnmarshalBinary(b)
+func (pc *SchnorrMSPublicCommitment) UnmarshalBinary(suite CryptoSuite, b []byte) error {
+	var T = suite.Point()
+	var sz = suite.Point().MarshalSize()
+	err := T.UnmarshalBinary(b[0:sz])
 	if err != nil {
 		return err
 	}

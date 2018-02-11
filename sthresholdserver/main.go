@@ -49,5 +49,5 @@ func main() {
 
 	// delay main thread until worker has returned.
 	<-exitCh
-
+	fmt.Println("Exiting server now.")
 }

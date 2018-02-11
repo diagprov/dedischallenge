@@ -89,7 +89,7 @@ func serverComms(gconfig SchnorrMGroupConfig, i int, msg []byte, reportChan chan
 	// now we have our aggregate commitment, we need to send this
 	// to the server also.
 
-	buffer_response := make([]byte, 1026)
+	buffer_response := make([]byte, 1024)
 	secondMessage := []byte{COMMITMENT, 0}
 
 	secondMessage = append(secondMessage, aggregateCommitmentBytes...)
@@ -160,6 +160,7 @@ func runClientProtocol(configFilePath string) (bool, error) {
 	}
 
 	var respCount int = 0
+	fmt.Println("CLIENT", "C", "Allocated space for", len(config.Members))
 	commitmentArray := make([]schnorrgs.SchnorrMSPublicCommitment, len(config.Members))
 
 	fmt.Println("CLIENT", "C", "Controller getting ready to receive")
@@ -172,11 +173,11 @@ func runClientProtocol(configFilePath string) (bool, error) {
 			// we should probably check all our client threads have responded
 			// once and only once, but we won't
 
-			var commitment schnorrgs.SchnorrMSPublicCommitment
+			commitment := schnorrgs.SchnorrMSPublicCommitment{}
 
-			commitment.UnmarshalBinary(suite, msg.Message)
+			err = commitment.UnmarshalBinary(suite, msg.Message)
 			if err != nil {
-				fmt.Println("CLIENT", "Read Error")
+				fmt.Println("CLIENT", "C", "Decode Read Error")
 				fmt.Println(err.Error())
 				return false, err
 			}
@@ -185,15 +186,12 @@ func runClientProtocol(configFilePath string) (bool, error) {
 			// let's go
 			fmt.Println("CLIENT", "C", "Controller got message index", msg.MemberIndex)
 			commitmentArray[msg.MemberIndex] = commitment
-
 			respCount = respCount + 1
 
 		default:
 		}
 
 		if respCount == len(config.Members) {
-			// reset and break
-			respCount = 0
 			break
 		}
 	}
@@ -222,19 +220,22 @@ func runClientProtocol(configFilePath string) (bool, error) {
 	fmt.Println("CLIENT", "C", "Controller getting ready to receive")
 
 	responseArray := make([]kyber.Scalar, len(config.Members))
+	respCount = 0
 
 	for {
-
 		select {
 		case msg := <-reportChan:
 
 			// we should probably check all our client threads have responded
 			// once and only once, but we won't
 			response := suite.Scalar().Zero()
+			scalar_size := suite.Scalar().MarshalSize()
 
-			err := response.UnmarshalBinary(msg.Message)
+			err := response.UnmarshalBinary(msg.Message[0:scalar_size])
 
 			if err != nil {
+				fmt.Println("CLIENT", "C", "Error!")
+				fmt.Println(err.Error())
 				return false, err
 			}
 
@@ -262,5 +263,27 @@ func runClientProtocol(configFilePath string) (bool, error) {
 	fmt.Println("Signature created, is")
 	fmt.Println(sig)
 
+	sharedpubkey, err := config.GetJointKeyAsKV()
+	if err != nil {
+		fmt.Println("Error during Verification")
+		fmt.Println(err.Error())
+		return false, err
+	}
+
+	fmt.Println("Verifying Signature with shared public key")
+
+	verified, err := schnorrgs.SchnorrVerify(suite,
+		*sharedpubkey,
+		randomdata, sig)
+	if err != nil {
+		fmt.Println("Error during Verification")
+		fmt.Println(err.Error())
+		return false, err
+	}
+	if verified == false {
+		fmt.Println("Verification of signature failed.")
+		return false, nil
+	}
+	fmt.Println("Signature verified OK!")
 	return true, nil
 }
