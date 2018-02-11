@@ -24,7 +24,8 @@ import (
 	//"bytes"
 	"crypto/rand"
 	"github.com/dedis/kyber"
-	"golang.org/x/crypto/sha3"
+	"golang.org/x/crypto/blake2b"
+	"io"
 )
 
 // Represents he prviate parameters
@@ -40,6 +41,24 @@ type WISchnorrBlindPrivateParams struct {
 	B kyber.Point
 }
 
+func (b WISchnorrBlindPrivateParams) MarshalTo(w io.Writer) {
+	b.U.MarshalTo(w)
+	b.S.MarshalTo(w)
+	b.D.MarshalTo(w)
+	b.Z.MarshalTo(w)
+	b.A.MarshalTo(w)
+	b.B.MarshalTo(w)
+}
+
+func (b WISchnorrBlindPrivateParams) UnmarshalBinary(raw []byte) {
+	b.U.UnmarshalBinary(raw[:b.U.MarshalSize()])
+	b.S.UnmarshalBinary(raw[b.U.MarshalSize():b.S.MarshalSize()])
+	b.D.UnmarshalBinary(raw[b.S.MarshalSize():b.D.MarshalSize()])
+	b.Z.UnmarshalBinary(raw[b.D.MarshalSize():b.Z.MarshalSize()])
+	b.A.UnmarshalBinary(raw[b.Z.MarshalSize():b.A.MarshalSize()])
+	b.B.UnmarshalBinary(raw[b.A.MarshalSize():b.B.MarshalSize()])
+}
+
 /* GenerateZ takes some random agreed information and creates
    Z the "public-only" key that is witness-independent as per
    the paper. We've probably broken that slightly in this implementation
@@ -52,7 +71,7 @@ type WISchnorrBlindPrivateParams struct {
 */
 func GenerateZ(suite CryptoSuite, info []byte) (kyber.Point, error) {
 
-	hasher := sha3.New256()
+	hasher, _ := blake2b.New512(nil)
 	hasher.Write(info)
 
 	zfactor := suite.Scalar().SetBytes(hasher.Sum(nil))
@@ -71,6 +90,16 @@ type WISchnorrPublicParams struct {
 	B kyber.Point
 }
 
+func (pp WISchnorrPublicParams) MarshalTo(w io.Writer) {
+	pp.A.MarshalTo(w)
+	pp.B.MarshalTo(w)
+}
+
+func (pp WISchnorrPublicParams) UnmarshalBinary(b []byte) {
+	pp.A.UnmarshalBinary(b[:pp.A.MarshalSize()])
+	pp.B.UnmarshalBinary(b[pp.A.MarshalSize():pp.B.MarshalSize()])
+}
+
 /* The challenge message is the structure the user
    generates and passes to the server
    in order for it to be signed.
@@ -78,6 +107,14 @@ type WISchnorrPublicParams struct {
 */
 type WISchnorrChallengeMessage struct {
 	E kyber.Scalar
+}
+
+func (cm WISchnorrChallengeMessage) MarshalTo(w io.Writer) {
+	cm.E.MarshalTo(w)
+}
+
+func (cm WISchnorrChallengeMessage) UnmarshalBinary(b []byte) {
+
 }
 
 // Generates all of the private parameters aside
@@ -213,7 +250,7 @@ func ClientGenerateChallenge(suite CryptoSuite,
 	combinedmsg = append(combinedmsg, zraw...)
 	combinedmsg = append(combinedmsg, msg...)
 
-	hasher := sha3.New256()
+	hasher, _ := blake2b.New512(nil)
 	hasher.Write(combinedmsg)
 	epsilon := suite.Scalar().SetBytes(hasher.Sum(nil))
 
@@ -296,10 +333,9 @@ func ClientSignBlindly(suite CryptoSuite, clientParameters WISchnorrClientParame
 	combinedmsg = append(combinedmsg, bZ...)
 	combinedmsg = append(combinedmsg, msg...)
 
-	hasher := sha3.New256()
+	hasher, _ := blake2b.New512(nil)
 	hasher.Write(combinedmsg)
-	bSig := hasher.Sum(nil)
-	sig := suite.Scalar().SetBytes(bSig)
+	sig := suite.Scalar().SetBytes(hasher.Sum(nil))
 
 	vsig := suite.Scalar()
 	vsig.Add(omega, delta)
@@ -341,7 +377,7 @@ func VerifyBlindSignature(suite CryptoSuite, pk SchnorrPublicKV,
 	combinedmsg = append(combinedmsg, bZ...)
 	combinedmsg = append(combinedmsg, msg...)
 
-	hasher := sha3.New256()
+	hasher, _ := blake2b.New512(nil)
 	hasher.Write(combinedmsg)
 	bSig := hasher.Sum(nil)
 

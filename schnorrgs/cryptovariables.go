@@ -80,8 +80,7 @@ func (s SchnorrSecretKV) GetPublicKeyset() SchnorrPublicKV {
 // Exports a secret key for on-disk storage
 func (k SchnorrSecretKV) Export() []byte {
 
-	bins := k.s.Bytes()
-	strs := hex.EncodeToString(bins)
+	strs := k.s.String()
 
 	diskrepr := SchnorrSecretDiskRepr{
 		Suite: k.suite,

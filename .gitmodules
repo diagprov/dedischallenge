@@ -1,3 +1,0 @@
-[submodule "vendor/github.com/dedis/kyber"]
-	path = vendor/github.com/dedis/kyber
-	url = https://github.com/dedis/kyber.git

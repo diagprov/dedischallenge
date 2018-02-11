@@ -1,12 +1,14 @@
-
 package main
 
 import (
-    "fmt"
-    "net"
-    "flag"
-	"github.com/dedis/crypto/edwards/ed25519"
-	"vennard.ch/crypto"
+	"flag"
+	"fmt"
+	"github.com/dedis/kyber/group/edwards25519"
+	"github.com/diagprov/dedischallenge/schnorrgs"
+	"golang.org/x/net/context"
+	"net"
+	"os"
+	"os/signal"
 )
 
 func main() {
@@ -17,21 +19,35 @@ func main() {
 	flag.StringVar(&kfilepath, "keyfile", "", "Use the keyfile specified")
 
 	flag.Parse()
-    fmt.Printf("Sigserv1 - listening on port %d.\n", port)
+	fmt.Printf("Sigserv1 - listening on port %d.\n", port)
 
-    suite := ed25519.NewAES128SHA256Ed25519(true) 
-    kv, err := crypto.SchnorrLoadKeypair(kfilepath, suite)
-    if err != nil {
-    	fmt.Println("Error " + err.Error())
-    	return
-    }
+	suite := edwards25519.NewBlakeSHA256Ed25519()
+	kv, err := schnorrgs.SchnorrLoadSecretKV(kfilepath)
+	if err != nil {
+		fmt.Println("Error " + err.Error())
+		return
+	}
 
-    // I don't know if there's a way to 
-    // do std::bind-like behaviour in GO.
-    // for C++ what I'd do is pretty simple: 
-    // newfunc := std::bind(&func, args to bind)
-    var signOneKBImpl connectionhandler = func(conn net.Conn) {
-        signOneKBMSchnorr(conn, suite, kv)
-    }
-    serve(port, signOneKBImpl)
+	exitCh := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var signOneKBImpl connectionhandler = func(conn net.Conn) {
+		signOneKBMSchnorr(conn, suite, *kv)
+	}
+	serve(port, signOneKBImpl, ctx, exitCh)
+
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, os.Interrupt)
+
+	go func() {
+		select {
+		case <-signalCh:
+			cancel()
+			return
+		}
+	}()
+
+	// delay main thread until worker has returned.
+	<-exitCh
+
 }

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
+	"github.com/diagprov/dedischallenge/schnorrgs"
 	"golang.org/x/net/context"
 	"io"
 	"net"
@@ -19,7 +19,7 @@ const (
 	COMMITMENT byte = 2
 )
 
-func signOneKBMSchnorr(conn net.Conn, suite abstract.Suite, kv crypto.SchnorrKeyset) {
+func signOneKBMSchnorr(conn net.Conn, suite schnorrgs.CryptoSuite, kv schnorrgs.SchnorrSecretKV) {
 
 	defer conn.Close()
 
@@ -49,8 +49,8 @@ func signOneKBMSchnorr(conn net.Conn, suite abstract.Suite, kv crypto.SchnorrKey
 
 	var internalState byte = INIT
 	var message []byte
-	var aggregateCommitment crypto.SchnorrMAggregateCommmitment
-	var privateCommit crypto.SchnorrMPrivateCommitment
+	var aggregateCommitment schnorrgs.SchnorrMSPublicCommitment
+	var privateCommitment schnorrgs.SchnorrMSCommitment
 
 	for {
 		select {
@@ -77,38 +77,43 @@ func signOneKBMSchnorr(conn net.Conn, suite abstract.Suite, kv crypto.SchnorrKey
 
 				message = payload
 
-				privateCommitment, err := crypto.SchnorrMGenerateCommitment(suite)
+				privateCommitment := schnorrgs.SchnorrMSGenerateCommitment(suite)
+
+				publicCommitment := privateCommitment.GetPublicCommitment()
+
+				b, err := publicCommitment.MarshalBinary()
 				if err != nil {
-					fmt.Println("Error generating commitment")
-					fmt.Println(err.Error())
-					break
+					fmt.Println("Error")
+					fmt.Println(err.Error)
+					return
 				}
-				privateCommit = privateCommitment
 
-				publicCommitment := privateCommitment.PublicCommitment()
-
-				buf := bytes.Buffer{}
-				abstract.Write(&buf, &publicCommitment, suite)
-				conn.Write(buf.Bytes())
+				conn.Write(b)
 
 			case COMMITMENT:
 
 				fmt.Println("SERVER", "Received Commitment")
 
-				buf := bytes.NewBuffer(payload)
-				err := abstract.Read(buf, &aggregateCommitment, suite)
+				err := aggregateCommitment.UnmarshalBinary(payload)
 				if err != nil {
-					fmt.Println("Error binary decode of aggregateCommitment")
-					fmt.Println(err.Error())
-					break
+					fmt.Println("Error")
+					fmt.Println(err.Error)
+					return
 				}
-
-				collectiveChallenge := crypto.SchnorrMComputeCollectiveChallenge(suite, message, aggregateCommitment)
-				response := crypto.SchnorrMUnmarshallCCComputeResponse(suite, kv, privateCommit, collectiveChallenge)
-
-				outBuf := bytes.Buffer{}
-				abstract.Write(&outBuf, &response, suite)
-				conn.Write(outBuf.Bytes())
+				collectiveChallenge, err := schnorrgs.SchnorrMSComputeCollectiveChallenge(suite, aggregateCommitment, message)
+				if err != nil {
+					fmt.Println("Error")
+					fmt.Println(err.Error)
+					return
+				}
+				response := schnorrgs.SchnorrMSComputeResponse(suite, collectiveChallenge, kv, privateCommitment)
+				b, err := response.MarshalBinary()
+				if err != nil {
+					fmt.Println("Error")
+					fmt.Println(err.Error)
+					return
+				}
+				conn.Write(b)
 
 				// we're now at the end, we can break and close connection
 				break

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"github.com/dedis/kyber"
 	"github.com/dedis/kyber/group/edwards25519"
 	"github.com/diagprov/dedischallenge/schnorrgs"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
@@ -46,7 +45,7 @@ func main() {
 
 	fmt.Println("CLIENT", "Connecting to", hostspec)
 
-	pubKey, err := schnorrgs.SchnorrLoadPubkey(kfilepath, suite)
+	pubKey, err := schnorrgs.SchnorrLoadPubkey(kfilepath)
 	if err != nil {
 		fmt.Println("CLIENT", "Error loading public key"+err.Error())
 		return
@@ -74,7 +73,7 @@ func main() {
 
 	// first up, let's receive the signer's parameter set
 
-	buffer := make([]byte, 1026)
+	buffer := make([]byte, 1028)
 	_, err = conn.Read(buffer)
 	if err != nil {
 		fmt.Println("CLIENT", "Error reading from server", err.Error())
@@ -82,8 +81,7 @@ func main() {
 	}
 
 	var userPublicParams schnorrgs.WISchnorrPublicParams
-	decodeBuffer := bytes.NewBuffer(buffer)
-	err = abstract.Read(decodeBuffer, &userPublicParams, suite)
+	userPublicParams.UnmarshalBinary(buffer)
 
 	// now we've got that, complete the challenge phase (i.e. let's generate E)
 	challenge, userPrivateParams, err := schnorrgs.ClientGenerateChallenge(suite, userPublicParams, pubKey, info, message)
@@ -94,7 +92,7 @@ func main() {
 
 	// encode and send to server.
 	challengebuffer := bytes.Buffer{}
-	abstract.Write(&challengebuffer, &challenge, suite)
+	challenge.MarshalTo(challengebuffer)
 	conn.Write(challengebuffer.Bytes())
 
 	// and now we wait for the server to respond to this:

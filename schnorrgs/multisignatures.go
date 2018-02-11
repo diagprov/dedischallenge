@@ -5,12 +5,42 @@ package schnorrgs
 */
 
 import (
+	"bytes"
 	"github.com/dedis/kyber"
+	"io"
 )
 
 type SchnorrMSCommitment struct {
 	v kyber.Scalar
 	T kyber.Point
+}
+
+func (sc SchnorrMSCommitment) MarshalBinary() ([]byte, error) {
+	var result bytes.Buffer
+
+	b, err := sc.v.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	result.Write(b)
+
+	b, err = sc.T.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	result.Write(b)
+
+	return result.Bytes(), nil
+}
+
+func (sc SchnorrMSCommitment) MarshalTo(w io.Writer) {
+	sc.v.MarshalTo(w)
+	sc.T.MarshalTo(w)
+}
+
+func (sc SchnorrMSCommitment) UnmarshalBinary(b []byte) {
+	sc.v.UnmarshalBinary(b[:sc.v.MarshalSize()])
+	sc.T.UnmarshalBinary(b[sc.v.MarshalSize():sc.T.MarshalSize()])
 }
 
 func (msc SchnorrMSCommitment) GetPublicCommitment() SchnorrMSPublicCommitment {
@@ -19,6 +49,26 @@ func (msc SchnorrMSCommitment) GetPublicCommitment() SchnorrMSPublicCommitment {
 
 type SchnorrMSPublicCommitment struct {
 	T kyber.Point
+}
+
+func (pc SchnorrMSPublicCommitment) MarshalBinary() ([]byte, error) {
+	var result bytes.Buffer
+
+	b, err := pc.T.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	result.Write(b)
+
+	return result.Bytes(), nil
+}
+
+func (pc SchnorrMSPublicCommitment) MarshalTo(w io.Writer) {
+	pc.T.MarshalTo(w)
+}
+
+func (pc SchnorrMSPublicCommitment) UnmarshalBinary(b []byte) error {
+	return pc.T.UnmarshalBinary(b)
 }
 
 func SchnorrMSGenerateCommitment(suite CryptoSuite) SchnorrMSCommitment {
